@@ -1,6 +1,8 @@
+import re
 from dataclasses import dataclass
 from enum import IntEnum
 from typing import List
+
 
 class TokenType(IntEnum):
     EQUAL = 0
@@ -13,6 +15,7 @@ class TokenType(IntEnum):
     DIGIT = 7
     DOT = 8
     LETTER = 9
+
 
 @dataclass(frozen=True)
 class Token:
@@ -27,9 +30,13 @@ class Token:
             return False
         return self.type == other.type and self.value == other.value
 
+
 def lexer(text: str) -> List[Token]:
-    text = text.replace(" ", "")
+    text = re.sub(r"\s+", "", text)
     tokens: List[Token] = []
+
+    if len(text) == 0:
+        raise ValueError("Empty input text")
 
     for char in text:
         if char == "=":

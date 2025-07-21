@@ -25,8 +25,8 @@ class Root(Node):
 class Literal(Node):
     value: Union[int, float, Fraction]
 
-    def __post_init__(self):
-        self.value = Fraction(self.value)
+    # def __post_init__(self):
+    #     self.value = Fraction(self.value)
 
     def __str__(self) -> str:
         if self.value < 0:
@@ -43,6 +43,8 @@ class Variable(Node):
         self.coef = Fraction(self.coef)
 
     def __str__(self) -> str:
+        if self.coef < 0:
+            return f"({self.coef}{self.name})"
         return f"{self.coef}{self.name}" if self.coef != 1 else self.name
 
 

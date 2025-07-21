@@ -1,7 +1,7 @@
 from fractions import Fraction
 from typing import List, Tuple
 from lexer import Token, TokenType
-from data import Node, Root, Literal, Variable, BinaryOp
+from nodes import Node, Root, Literal, Variable, BinaryOp
 
 """
 <equation>   = <expression> EQUAL <expression>

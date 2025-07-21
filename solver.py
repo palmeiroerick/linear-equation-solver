@@ -1,6 +1,8 @@
 import operator as op
 from typing import List, Union
-from data import Node, Root, Literal, Variable, BinaryOp
+from nodes import Node, Root, Literal, Variable, BinaryOp
+from math import lcm
+from fractions import Fraction
 
 
 def has_variable(node: Node) -> bool:
@@ -21,44 +23,58 @@ def has_literal(node: Node) -> bool:
     return False
 
 
+def contains_fraction(node: Node) -> bool:
+    if isinstance(node, Root):
+        return contains_fraction(node.left) or contains_fraction(node.right)
+
+    if isinstance(node, BinaryOp):
+        if node.op == "/":
+            return True
+        return contains_fraction(node.left) or contains_fraction(node.right)
+
+    return False
+
+
 def solver(eq: Root) -> Root:
     eq.left = solve_expr(eq.left)
     eq.right = solve_expr(eq.right)
 
     # ax = b -> x = b / a
     if isinstance(eq.left, Variable) and isinstance(eq.right, Literal):
-        return Root(Variable(), Literal(eq.right.value / eq.left.coef))
+        return Root(Variable(eq.left.name), Literal(eq.right.value / eq.left.coef))
 
     # a = bx -> x = a / b:
     if isinstance(eq.left, Literal) and isinstance(eq.right, Variable):
-        return Root(Variable(), Literal(eq.left.value / eq.right.coef))
+        return Root(Variable(eq.right.name), Literal(eq.left.value / eq.right.coef))
 
     # x/a = c/b + dx -> l = lcm(a,b): lx/a = l(c/b + dx)
     # TODO: isso supostamente só deveria ser usado para divisão de x por um literal
     # Ele resolve isso encontrando o lcm de todas os literais que dividem x (denominadores),
     # multiplica left e right pelo lcm e aplica a distributiva para remover todas as frações de x por um literal
     # Caso haja uma divisão de litereral por literal ela deve ser resolvida por solver
-    # if contains_fraction(eq):
-    #     denominators: list[int] = []
+    if contains_fraction(eq):
+        denominators: list[int] = []
 
-    #     def get_denominators(node: Node):
-    #         if isinstance(node, Root):
-    #             get_denominators(node.left)
-    #             get_denominators(node.right)
+        def get_denominators(node: Node):
+            if isinstance(node, Root):
+                get_denominators(node.left)
+                get_denominators(node.right)
 
-    #         if isinstance(node, BinaryOp):
-    #             if node.op == "/":
-    #                 denominators.append(node.right.value)
-    #             else:
-    #                 get_denominators(node.left)
-    #                 get_denominators(node.right)
+            if isinstance(node, BinaryOp):
+                if node.op == "/" and isinstance(node.right, Literal):
+                    if isinstance(node.right.value, (float, Fraction)):
+                        raise NotImplementedError("fractions as denominators")
+                    denominators.append(node.right.value)
+                else:
+                    get_denominators(node.left)
+                    get_denominators(node.right)
 
-    #         return
+            return
 
-    #     get_denominators(eq)
-    #     l: int = lcm(*denominators)
-    #     # return solve(Root(distribute(eq.left, l), distribute(eq.right, l)))
-    #     return Root(distribute(eq.left, l), distribute(eq.right, l))
+        get_denominators(eq)
+        l: int = lcm(*denominators)
+        # return solve(Root(distribute(eq.left, l), distribute(eq.right, l)))
+        return Root(distributive(eq.left, Literal(l)), distributive(eq.right, Literal(l)))
 
     # ax + b = c + dx -> ax + (-dx) = c + (-b)
     if has_variable(eq.right) or has_literal(eq.left):
@@ -77,7 +93,7 @@ def solver(eq: Root) -> Root:
 
         def invert(node: Union[Literal, Variable]) -> Node:
             if isinstance(node, Variable):
-                return Variable(coef=node.coef * -1)
+                return Variable(name=node.name, coef=node.coef * -1)
 
             return Literal(node.value * -1)
 
@@ -121,40 +137,33 @@ def solve_expr(expr: Node) -> Node:
         right = solve_expr(expr.right)
 
         # Apply Distributive
-        if (
-            expr.op == "*"
-            and isinstance(expr.left, Literal)
-            and isinstance(expr.right, BinaryOp)
-        ):
+        if expr.op == "*" and isinstance(expr.left, Literal) and isinstance(expr.right, BinaryOp):
             return solve_expr(distributive(expr.right, expr.left))
 
-        if (
-            expr.op == "*"
-            and isinstance(expr.left, BinaryOp)
-            and isinstance(expr.right, Literal)
-        ):
+        if expr.op == "*" and isinstance(expr.left, BinaryOp) and isinstance(expr.right, Literal):
             return solve_expr(distributive(expr.left, expr.right))
 
         # Evaluate an operation with literal operands
         if isinstance(left, Literal) and isinstance(right, Literal):
-            operations = {"+": op.add, "-": op.sub, "*": op.mul, "/": op.truediv}
+            operations = {"+": op.add, "-": op.sub,
+                          "*": op.mul, "/": op.truediv}
             return Literal(operations[expr.op](left.value, right.value))
 
         # Combine like terms with the variable "x"
         if isinstance(left, Variable) and isinstance(right, Variable):
-            return Variable(coef=left.coef + right.coef)
+            return Variable(name=left.name, coef=left.coef + right.coef)
 
         # Transforms a * x into ax
         if expr.op == "*" and isinstance(left, Literal) and isinstance(right, Variable):
-            return Variable(coef=right.coef * left.value)
+            return Variable(name=right.name, coef=right.coef * left.value)
 
         # Transforms x * a into ax
         if expr.op == "*" and isinstance(left, Variable) and isinstance(right, Literal):
-            return Variable(coef=left.coef * right.value)
+            return Variable(name=left.name, coef=left.coef * right.value)
 
         # ax / b -> (a/b)x
         if expr.op == "/" and isinstance(left, Variable) and isinstance(right, Literal):
-            return Variable(coef=left.coef / right.value)
+            return Variable(name=left.name, coef=left.coef / right.value)
 
         return BinaryOp(expr.op, left, right)
 
@@ -187,3 +196,31 @@ def distributive(node: Node, multiplier: Literal) -> Node:
             return BinaryOp("*", BinaryOp("*", multiplier, node.left), node.right)
 
     return node
+
+
+# def distributive_div(node: Node, denominator: Literal) -> Node:
+#     if isinstance(node, (Literal, Variable)):
+#         return BinaryOp("/", node, denominator)
+
+#     if isinstance(node, BinaryOp):
+#         if node.op == "+":
+#             return BinaryOp(
+#                 "+",
+#                 distributive_div(node.left, denominator),
+#                 distributive_div(node.right, denominator),
+#             )
+
+#         if node.op == "-":
+#             return BinaryOp(
+#                 "-",
+#                 distributive_div(node.left, denominator),
+#                 distributive_div(node.right, denominator),
+#             )
+
+#         if node.op == "/":
+#             return BinaryOp("/", BinaryOp("/", node.left, denominator), node.right)
+
+#         if node.op == "*":
+#             return BinaryOp("*", BinaryOp("/", node.left, denominator), node.right)
+
+#     return node

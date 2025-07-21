@@ -1,24 +1,37 @@
-from lexer import lexer
-from parser import parser
-from solver import solver
-
 # TODO: distributive when x multiplies x -> x(a + x)
-# TODO: 2 - (3 - x) = 1 -> x = 2 not x = (-4)
-# Subtração e divisão são operações não comutativas (a ordem dos operadores importa)
-# => ∃a,b:a−b!=b−a
 # TODO: Deve ter uma forma melhor de em BinaryOp.__str__() printar não comutatividade
 
 # TODO: Ser mais inteligente nas exceptions do parser
 #       Dizendo por exemplo que 2 + = x falta um operador para + não simplismente "list index out of range"
 
+# TODO: the leftmost element don't need parentheses when it is negative
+# print -2 + 3 instead of (-2) + 3
+
+# TODO: (parser) operator must be between operands
+# TODO: raise error for close parentheses without open parentheses
+# TODO: handle correctly with --a or ++a (multiples MINUS or PLUS together)
+# TODO: handle with DIGIT, DOT (without digits after dot)
+# TODO: handle unfinished expressions (both <expr> and <term>)
+
+# TODO: (solver) identity and contradiction
+# TODO: Associativity
+# TODO: Testar divisão por frações (2 + x) / 3/4
+# TODO: Coletar denominadores de Fraction() para o lcm
+# TODO: quando o numero que multiplica x é uma fração 1/3x
+# TODO: quando o denominador é variavel 2/x
+
+# TODO: 2 - (3 - x) = 1 -> x = 2 not x = (-4)
+# Subtração e divisão são operações não comutativas (a ordem dos operadores importa)
+# => ∃a,b:a−b!=b−a
+
+# Isso é resolvivel? (2 / 3) / x) = 1
+
+# TODO: uma equação linear não pode ser definida sintaticamente é necessario semantica
+# portanto o solver prescisa analizar a equação e verificar se ela realmente é linear
+
 
 def main():
-    tokens = lexer(" (-50x + (-20)) * 100 = 100 * (2 + 1) + 30")
-    # tokens = lexer("2 + 2 = x")
-    # # tokens = lexer(" -5x + (-2) = 1 * (2 + 1) + 3")
-    # tokens = lexer("2 - (3 - 1x) = 1")
-    eq = parser(tokens)
-    print(solver(eq))
+    ...
 
 
 if __name__ == "__main__":
